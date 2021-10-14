@@ -2,11 +2,30 @@
 #include <fstream>
 #include <iostream>
 
-BAKKESMOD_PLUGIN(TradeLogger, "ItsBranK's Trade Logger", "1.2", PLUGINTYPE_THREADED)
+BAKKESMOD_PLUGIN(TradeLogger, "ItsBranK's Trade Logger", "1.3", PLUGINTYPE_THREADED)
 
-std::string TradeLogger::GuidFormatStr(EGuidFormats format)
+TradeId::TradeId() : Guid(0), Format(EGuidFormats::Digits) {}
+
+TradeId::~TradeId() { }
+
+GuidWrapper TradeId::GetGuid() const
 {
-	switch (format)
+	return Guid;
+}
+
+std::string TradeId::GetGuidStr() const
+{
+	return Guid.ToString(Format);
+}
+
+EGuidFormats TradeId::GetFormat() const
+{
+	return Format;
+}
+
+std::string TradeId::GetFormatStr() const
+{
+	switch (Format)
 	{
 	case EGuidFormats::Digits:
 		return "Digits";
@@ -20,13 +39,74 @@ std::string TradeLogger::GuidFormatStr(EGuidFormats format)
 		return "HexValuesInBraces";
 	case EGuidFormats::UniqueObjectGuid:
 		return "UniqueObjectGuid";
-	//case EGuidFormats::Short:
-	//	return "Short";
-	//case EGuidFormats::Base36Encoded:
-	//	return "Base36Encoded";
 	}
 
 	return "Unknown";
+}
+
+void TradeId::SetGuid(const GuidWrapper& tradeGuid)
+{
+	Guid = tradeGuid;
+}
+
+void TradeId::SetFormat(EGuidFormats newFormat)
+{
+	Format = newFormat;
+}
+
+bool TradeId::IsValid() const
+{
+	return Guid.IsValid();
+}
+
+TradeId TradeId::operator=(const TradeId& other)
+{
+	Guid = other.Guid;
+	Format = other.Format;
+	return *this;
+}
+
+InventoryInfo::InventoryInfo() : CurrencyId(-1), CurrencyAmount(0) { }
+
+InventoryInfo::~InventoryInfo() { }
+
+InventoryInfo InventoryInfo::operator=(const InventoryInfo& other)
+{
+	Names = other.Names;
+	Instances = other.Instances;
+	CurrencyId = other.CurrencyId;
+	CurrencyAmount = other.CurrencyAmount;
+	return *this;
+}
+
+TradeInfo::TradeInfo()
+{
+	Reset();
+}
+
+TradeInfo::~TradeInfo() { }
+
+void TradeInfo::Reset()
+{
+	LocalPlayer = UniqueIDWrapper();
+	RemotePlayer = UniqueIDWrapper();
+	Id = TradeId();
+	LocalData = InventoryInfo();
+	RemoteData = InventoryInfo();
+	StartEpoch = 0;
+	EndEpoch = 0;
+}
+
+TradeInfo TradeInfo::operator=(const TradeInfo& other)
+{
+	LocalPlayer = other.LocalPlayer;
+	RemotePlayer = other.RemotePlayer;
+	Id = other.Id;
+	LocalData = other.LocalData;
+	RemoteData = other.RemoteData;
+	StartEpoch = other.StartEpoch;
+	EndEpoch = other.EndEpoch;
+	return *this;
 }
 
 void TradeLogger::onLoad()
@@ -57,7 +137,7 @@ void TradeLogger::onUnload()
 
 void TradeLogger::LogTrade(const TradeInfo& tradeInfo)
 {
-	if (!tradeInfo.TradeId.Guid.IsValid())
+	if (!tradeInfo.Id.IsValid())
 	{
 		cvarManager->log("(LogTrade) Warning: TradeId is invalid! Please contact ItsBranK with any information about your trade!");
 	}
@@ -127,8 +207,8 @@ void TradeLogger::LogTrade(const TradeInfo& tradeInfo)
 	logFile << "\t\t\"RemoteCurrencyId\": " + std::to_string(tradeInfo.RemoteData.CurrencyId) + "," << std::endl;
 	logFile << "\t\t\"RemoteCurrencyAmount\": " + std::to_string(tradeInfo.RemoteData.CurrencyAmount) + "," << std::endl;
 
-	logFile << "\t\t\"TradeGuid\": \"" + tradeInfo.TradeId.Guid.ToString(tradeInfo.TradeId.Format) + "\"," << std::endl;
-	logFile << "\t\t\"TradeGuidFormat\": \"EGuidFormats::" + GuidFormatStr(tradeInfo.TradeId.Format) + "\"" << std::endl;
+	logFile << "\t\t\"TradeGuid\": \"" + tradeInfo.Id.GetGuidStr() + "\"," << std::endl;
+	logFile << "\t\t\"TradeGuidFormat\": \"EGuidFormats::" + tradeInfo.Id.GetFormatStr() + "\"" << std::endl;
 	logFile << "\t\t\"TradeStartEpoch\": \"" + std::to_string(tradeInfo.StartEpoch) + "\"," << std::endl;
 	logFile << "\t\t\"TradeEndEpoch\": \"" + std::to_string(tradeInfo.EndEpoch) + "\"" << std::endl;
 
@@ -142,13 +222,18 @@ void TradeLogger::LogTrade(const TradeInfo& tradeInfo)
 
 void TradeLogger::TradeAccept(ActorWrapper caller, void* params, const std::string& functionName)
 {
+	if (caller.memory_address)
+	{
+		CurrentTrade = caller.memory_address;
+	}
+
 	ActiveTrade.StartEpoch = std::time(nullptr);
 	cvarManager->log("(TradeAccept) Monitoring trade!");
 }
 
 void TradeLogger::TradeCancel(ActorWrapper caller, void* params, const std::string& functionName)
 {
-	ActiveTrade.Clear();
+	ActiveTrade.Reset();
 	CurrentTrade = NULL;
 }
 
@@ -162,7 +247,7 @@ void TradeLogger::TradeUpdate(ActorWrapper caller, void* params, const std::stri
 		if (tradeWrapper)
 		{
 			GUIDWrapper brokenWrapper = tradeWrapper.GetTradeGuid();
-			ActiveTrade.TradeId.Guid = { brokenWrapper.A, brokenWrapper.B, brokenWrapper.C, brokenWrapper.D };
+			ActiveTrade.Id.SetGuid(GuidWrapper(brokenWrapper.A, brokenWrapper.B, brokenWrapper.C, brokenWrapper.D));
 		}
 	}
 }
@@ -225,10 +310,10 @@ void TradeLogger::TradeVerify(ActorWrapper caller, void* params, const std::stri
 void TradeLogger::TradeComplete(ActorWrapper caller, void* params, const std::string& functionName)
 {
 	ActiveTrade.EndEpoch = std::time(nullptr);
-	ActiveTrade.TradeId.Format = EGuidFormats::UniqueObjectGuid;
+	ActiveTrade.Id.SetFormat(EGuidFormats::UniqueObjectGuid);
 
 	LogTrade(ActiveTrade);
 
-	ActiveTrade.Clear();
+	ActiveTrade.Reset();
 	CurrentTrade = NULL;
 }

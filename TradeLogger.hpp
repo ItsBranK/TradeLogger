@@ -3,27 +3,27 @@
 #include "bakkesmod/plugin/bakkesmodplugin.h"
 #include "Wrappers/GuidWrapper.hpp"
 
-class TradeIdInfo
+class TradeId
 {
-public:
+private:
 	GuidWrapper Guid;
 	EGuidFormats Format;
 
 public:
-	TradeIdInfo()
-	{
-		Format = EGuidFormats::Digits;
-	}
-
-	~TradeIdInfo() { }
+	TradeId();
+	~TradeId();
 
 public:
-	TradeIdInfo operator=(const TradeIdInfo& other)
-	{
-		Guid = other.Guid;
-		Format = other.Format;
-		return *this;
-	}
+	GuidWrapper GetGuid() const;
+	std::string GetGuidStr() const;
+	EGuidFormats GetFormat() const;
+	std::string GetFormatStr() const;
+	void SetGuid(const GuidWrapper& tradeGuid);
+	void SetFormat(EGuidFormats newFormat);
+	bool IsValid() const;
+
+public:
+	TradeId operator=(const TradeId& other);
 };
 
 class InventoryInfo
@@ -35,23 +35,11 @@ public:
 	int32_t CurrencyAmount;
 
 public:
-	InventoryInfo()
-	{
-		CurrencyId = -1;
-		CurrencyAmount = 0;
-	}
-
-	~InventoryInfo() { }
+	InventoryInfo();
+	~InventoryInfo();
 
 public:
-	InventoryInfo operator=(const InventoryInfo& other)
-	{
-		Names = other.Names;
-		Instances = other.Instances;
-		CurrencyId = other.CurrencyId;
-		CurrencyAmount = other.CurrencyAmount;
-		return *this;
-	}
+	InventoryInfo operator=(const InventoryInfo& other);
 };
 
 class TradeInfo
@@ -59,45 +47,21 @@ class TradeInfo
 public:
 	UniqueIDWrapper LocalPlayer;
 	UniqueIDWrapper RemotePlayer;
-	TradeIdInfo TradeId;
 	InventoryInfo LocalData;
 	InventoryInfo RemoteData;
+	TradeId Id;
 	uint64_t StartEpoch;
 	uint64_t EndEpoch;
 
 public:
-	TradeInfo()
-	{
-		StartEpoch = 0;
-		EndEpoch = 0;
-	}
-
-	~TradeInfo() { }
+	TradeInfo();
+	~TradeInfo();
 
 public:
-	void Clear()
-	{
-		LocalPlayer = UniqueIDWrapper();
-		RemotePlayer = UniqueIDWrapper();
-		TradeId = TradeIdInfo{};
-		LocalData = InventoryInfo{};
-		RemoteData = InventoryInfo{};
-		StartEpoch = 0;
-		EndEpoch = 0;
-	}
+	void Reset();
 
 public:
-	TradeInfo operator=(const TradeInfo& other)
-	{
-		LocalPlayer = other.LocalPlayer;
-		RemotePlayer = other.RemotePlayer;
-		TradeId = other.TradeId;
-		LocalData = other.LocalData;
-		RemoteData = other.RemoteData;
-		StartEpoch = other.StartEpoch;
-		EndEpoch = other.EndEpoch;
-		return *this;
-	}
+	TradeInfo operator=(const TradeInfo& other);
 };
 
 class TradeLogger : public BakkesMod::Plugin::BakkesModPlugin
@@ -108,7 +72,6 @@ private:
 	uintptr_t CurrentTrade;
 
 public:
-	std::string GuidFormatStr(EGuidFormats format);
 	virtual void onLoad();
 	virtual void onUnload();
 	void LogTrade(const TradeInfo& tradeInfo);

@@ -4,6 +4,8 @@ GuidWrapper::GuidWrapper() : A(0), B(0), C(0), D(0) { }
 
 GuidWrapper::GuidWrapper(const GuidWrapper& guid) : A(guid.A), B(guid.B), C(guid.C), D(guid.D) { }
 
+GuidWrapper::GuidWrapper(int32_t abcd) : A(abcd), B(abcd), C(abcd), D(abcd) { }
+
 GuidWrapper::GuidWrapper(int32_t a, int32_t b, int32_t c, int32_t d) : A(a), B(b), C(c), D(d) { }
 
 GuidWrapper::~GuidWrapper() { }
@@ -47,54 +49,6 @@ std::string GuidWrapper::ToString(EGuidFormats format) const
 	case EGuidFormats::UniqueObjectGuid:
 		sprintf_s(buffer, "%08X-%08X-%08X-%08X", A, B, C, D);
 		return buffer;
-	//case EGuidFormats::Short:
-	//{
-	//	const uint32_t Data[] = { A,B,C,D };
-	//	FString Result = FBase64::Encode(reinterpret_cast<const uint8*>(&Data), sizeof(Data));
-
-	//	Result.ReplaceCharInline(TEXT('+'), TEXT('-'), ESearchCase::CaseSensitive);
-	//	Result.ReplaceCharInline(TEXT('/'), TEXT('_'), ESearchCase::CaseSensitive);
-
-	//	// Remove trailing '=' base64 padding
-	//	check(Result.Len() == 24);
-	//	Result.RemoveAt(22, 2, false);
-
-	//	return Result;
-	//}
-
-	//case EGuidFormats::Base36Encoded:
-	//{
-	//	static const uint8_t Alphabet[36] =
-	//	{
-	//		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
-	//		'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
-	//		'W', 'X', 'Y', 'Z'
-	//	};
-
-	//	FUInt128 Value(A, B, C, D);
-
-	//	FString Result;
-	//	Result.Reserve(26);
-	//	TArray<TCHAR>& OutCharArray = Result.GetCharArray();
-
-	//	while (Value > 0)
-	//	{
-	//		uint32_t Remainder;
-	//		Value = Value.Divide(36, Remainder);
-	//		OutCharArray.Add(Alphabet[Remainder]);
-	//	}
-
-	//	for (int32_t i = OutCharArray.Num(); i < 25; i++)
-	//	{
-	//		OutCharArray.Add('0');
-	//	}
-
-	//	OutCharArray.Add(0);
-
-	//	check(Result.Len() == 25);
-	//	return Result.Reverse();
-	//}
-
 	default:
 		sprintf_s(buffer, "%08X%08X%08X%08X", A, B, C, D);
 		return buffer;
