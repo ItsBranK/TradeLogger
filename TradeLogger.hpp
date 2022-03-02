@@ -70,6 +70,7 @@ private:
 	std::filesystem::path DataFolder;
 	TradeInfo ActiveTrade;
 	uintptr_t CurrentTrade;
+	bool IsTrading = false;
 
 public:
 	virtual void onLoad();
@@ -78,6 +79,5 @@ public:
 	void TradeAccept(ActorWrapper caller, void* params, const std::string& functionName);
 	void TradeCancel(ActorWrapper caller, void* params, const std::string& functionName);
 	void TradeUpdate(ActorWrapper caller, void* params, const std::string& functionName);
-	void TradeVerify(ActorWrapper caller, void* params, const std::string& functionName);
 	void TradeComplete(ActorWrapper caller, void* params, const std::string& functionName);
 };
