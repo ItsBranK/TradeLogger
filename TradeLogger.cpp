@@ -2,7 +2,7 @@
 #include <fstream>
 #include <iostream>
 
-BAKKESMOD_PLUGIN(TradeLogger, "ItsBranK's Trade Logger", "1.4", PLUGINTYPE_THREADED)
+BAKKESMOD_PLUGIN(TradeLogger, "ItsBranK's Trade Logger", "1.5", PLUGINTYPE_THREADED)
 
 TradeId::TradeId() : Guid(0), Format(EGuidFormats::Digits) {}
 
@@ -66,7 +66,7 @@ TradeId TradeId::operator=(const TradeId& other)
 	return *this;
 }
 
-InventoryInfo::InventoryInfo() : CurrencyId(-1), CurrencyAmount(0) { }
+InventoryInfo::InventoryInfo() : CurrencyId(-1), CurrencyAmount(0) {}
 
 InventoryInfo::~InventoryInfo() { }
 
@@ -111,15 +111,14 @@ TradeInfo TradeInfo::operator=(const TradeInfo& other)
 
 void TradeLogger::onLoad()
 {
-	DataFolder = gameWrapper->GetBakkesModPath() / "data" / "TradeLogger";
-
+	DataFolder = (gameWrapper->GetBakkesModPath() / "data" / "TradeLogger");
 	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.GetRemotePlayerName", std::bind(&TradeLogger::TradeAccept, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_PartyMemberProfile_TA.OnRemoved", std::bind(&TradeLogger::TradeCancel, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.HandleTradeProductUpdate", std::bind(&TradeLogger::TradeUpdate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.HandleTradeCurrencyUpdate", std::bind(&TradeLogger::TradeUpdate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.SetTransactionQuantity", std::bind(&TradeLogger::TradeUpdate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.HandleTradePlayerError", std::bind(&TradeLogger::TradeCancel, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.__OnlineGameParty_TA__SendTradeToBackEnd_190B63BC4FE4FE9E67663C81A8D30EAA.__OnlineGameParty_TA__SendTradeToBackEnd_190B63BC4FE4FE9E67663C81A8D30EAA", std::bind(&TradeLogger::TradeComplete, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.__OnlineGameParty_TA__SendTradeToBackEnd_0x1.__OnlineGameParty_TA__SendTradeToBackEnd_0x1", std::bind(&TradeLogger::TradeComplete, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
 void TradeLogger::onUnload()
@@ -207,7 +206,7 @@ void TradeLogger::LogTrade(const TradeInfo& tradeInfo)
 	logFile << "\t\t\"RemoteCurrencyAmount\": " + std::to_string(tradeInfo.RemoteData.CurrencyAmount) + "," << std::endl;
 
 	logFile << "\t\t\"TradeGuid\": \"" + tradeInfo.Id.GetGuidStr() + "\"," << std::endl;
-	logFile << "\t\t\"TradeGuidFormat\": \"EGuidFormats::" + tradeInfo.Id.GetFormatStr() + "\"" << std::endl;
+	logFile << "\t\t\"TradeGuidFormat\": \"EGuidFormats::" + tradeInfo.Id.GetFormatStr() + "\"," << std::endl;
 	logFile << "\t\t\"TradeStartEpoch\": \"" + std::to_string(tradeInfo.StartEpoch) + "\"," << std::endl;
 	logFile << "\t\t\"TradeEndEpoch\": \"" + std::to_string(tradeInfo.EndEpoch) + "\"" << std::endl;
 
