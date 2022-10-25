@@ -11,6 +11,7 @@ private:
 
 public:
 	TradeId();
+	TradeId(const TradeId& tradeId);
 	~TradeId();
 
 public:
@@ -23,7 +24,7 @@ public:
 	bool IsValid() const;
 
 public:
-	TradeId operator=(const TradeId& other);
+	TradeId& operator=(const TradeId& other);
 };
 
 class InventoryInfo
@@ -36,10 +37,11 @@ public:
 
 public:
 	InventoryInfo();
+	InventoryInfo(const InventoryInfo& inventoryInfo);
 	~InventoryInfo();
 
 public:
-	InventoryInfo operator=(const InventoryInfo& other);
+	InventoryInfo& operator=(const InventoryInfo& other);
 };
 
 class TradeInfo
@@ -55,13 +57,14 @@ public:
 
 public:
 	TradeInfo();
+	TradeInfo(const TradeInfo& tradeInfo);
 	~TradeInfo();
 
 public:
 	void Reset();
 
 public:
-	TradeInfo operator=(const TradeInfo& other);
+	TradeInfo& operator=(const TradeInfo& other);
 };
 
 class TradeLogger : public BakkesMod::Plugin::BakkesModPlugin
@@ -69,7 +72,7 @@ class TradeLogger : public BakkesMod::Plugin::BakkesModPlugin
 private:
 	std::filesystem::path DataFolder;
 	TradeInfo ActiveTrade;
-	uintptr_t CurrentTrade;
+	uintptr_t CurrentTrade = 0;
 	bool IsTrading = false;
 
 public:

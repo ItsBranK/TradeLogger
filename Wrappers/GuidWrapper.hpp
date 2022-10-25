@@ -18,9 +18,9 @@ public:
 
 public:
 	GuidWrapper();
-	GuidWrapper(const GuidWrapper& guid);
 	GuidWrapper(int32_t abcd);
 	GuidWrapper(int32_t a, int32_t b, int32_t c, int32_t d);
+	GuidWrapper(const GuidWrapper& guid);
 	~GuidWrapper();
 
 public:
@@ -30,5 +30,5 @@ public:
 	std::string ToString(EGuidFormats format) const;
 
 public:
-	GuidWrapper operator=(const GuidWrapper& other);
+	GuidWrapper& operator=(const GuidWrapper& other);
 };

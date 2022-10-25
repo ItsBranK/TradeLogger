@@ -1,14 +1,14 @@
 #include "GuidWrapper.hpp"
 
-GuidWrapper::GuidWrapper() : A(0), B(0), C(0), D(0) { }
+GuidWrapper::GuidWrapper() : A(0), B(0), C(0), D(0) {}
 
-GuidWrapper::GuidWrapper(const GuidWrapper& guid) : A(guid.A), B(guid.B), C(guid.C), D(guid.D) { }
+GuidWrapper::GuidWrapper(int32_t abcd) : A(abcd), B(abcd), C(abcd), D(abcd) {}
 
-GuidWrapper::GuidWrapper(int32_t abcd) : A(abcd), B(abcd), C(abcd), D(abcd) { }
+GuidWrapper::GuidWrapper(int32_t a, int32_t b, int32_t c, int32_t d) : A(a), B(b), C(c), D(d) {}
 
-GuidWrapper::GuidWrapper(int32_t a, int32_t b, int32_t c, int32_t d) : A(a), B(b), C(c), D(d) { }
+GuidWrapper::GuidWrapper(const GuidWrapper& guid) : A(guid.A), B(guid.B), C(guid.C), D(guid.D) {}
 
-GuidWrapper::~GuidWrapper() { }
+GuidWrapper::~GuidWrapper() {}
 
 void GuidWrapper::Invalidate()
 {
@@ -55,7 +55,7 @@ std::string GuidWrapper::ToString(EGuidFormats format) const
 	}
 }
 
-GuidWrapper GuidWrapper::operator=(const GuidWrapper& other)
+GuidWrapper& GuidWrapper::operator=(const GuidWrapper& other)
 {
 	A = other.A;
 	B = other.B;

@@ -2,11 +2,13 @@
 #include <fstream>
 #include <iostream>
 
-BAKKESMOD_PLUGIN(TradeLogger, "ItsBranK's Trade Logger", "1.5", PLUGINTYPE_THREADED)
+BAKKESMOD_PLUGIN(TradeLogger, "ItsBranK's Trade Logger", "1.5", PLUGINTYPE_FREEPLAY)
 
 TradeId::TradeId() : Guid(0), Format(EGuidFormats::Digits) {}
 
-TradeId::~TradeId() { }
+TradeId::TradeId(const TradeId& tradeId) : Guid(tradeId.Guid), Format(tradeId.Format) {}
+
+TradeId::~TradeId() {}
 
 GuidWrapper TradeId::GetGuid() const
 {
@@ -59,7 +61,7 @@ bool TradeId::IsValid() const
 	return Guid.IsValid();
 }
 
-TradeId TradeId::operator=(const TradeId& other)
+TradeId& TradeId::operator=(const TradeId& other)
 {
 	Guid = other.Guid;
 	Format = other.Format;
@@ -68,9 +70,11 @@ TradeId TradeId::operator=(const TradeId& other)
 
 InventoryInfo::InventoryInfo() : CurrencyId(-1), CurrencyAmount(0) {}
 
-InventoryInfo::~InventoryInfo() { }
+InventoryInfo::InventoryInfo(const InventoryInfo& inventoryInfo) : CurrencyId(inventoryInfo.CurrencyId), CurrencyAmount(inventoryInfo.CurrencyAmount) {}
 
-InventoryInfo InventoryInfo::operator=(const InventoryInfo& other)
+InventoryInfo::~InventoryInfo() {}
+
+InventoryInfo& InventoryInfo::operator=(const InventoryInfo& other)
 {
 	Names = other.Names;
 	Instances = other.Instances;
@@ -84,20 +88,32 @@ TradeInfo::TradeInfo()
 	Reset();
 }
 
-TradeInfo::~TradeInfo() { }
+TradeInfo::TradeInfo(const TradeInfo& tradeInfo) :
+	LocalPlayer(tradeInfo.LocalPlayer),
+	RemotePlayer(tradeInfo.RemotePlayer),
+	LocalData(tradeInfo.LocalData),
+	RemoteData(tradeInfo.RemoteData),
+	Id(tradeInfo.Id),
+	StartEpoch(tradeInfo.StartEpoch),
+	EndEpoch(tradeInfo.EndEpoch)
+{
+
+}
+
+TradeInfo::~TradeInfo() {}
 
 void TradeInfo::Reset()
 {
 	LocalPlayer = UniqueIDWrapper();
 	RemotePlayer = UniqueIDWrapper();
-	Id = TradeId();
 	LocalData = InventoryInfo();
 	RemoteData = InventoryInfo();
+	Id = TradeId();
 	StartEpoch = 0;
 	EndEpoch = 0;
 }
 
-TradeInfo TradeInfo::operator=(const TradeInfo& other)
+TradeInfo& TradeInfo::operator=(const TradeInfo& other)
 {
 	LocalPlayer = other.LocalPlayer;
 	RemotePlayer = other.RemotePlayer;
@@ -138,84 +154,91 @@ void TradeLogger::LogTrade(const TradeInfo& tradeInfo)
 	if (!tradeInfo.Id.IsValid())
 	{
 		cvarManager->log("(LogTrade) Warning: TradeId is invalid! Please contact ItsBranK with any information about your trade!");
+		return;
 	}
-
-	std::string fileName = "TradeDate_" + std::to_string(std::time(nullptr)) + ".json";
 
 	if (!std::filesystem::exists(DataFolder))
 	{
 		std::filesystem::create_directory(DataFolder);
 	}
 
-	std::ofstream logFile(DataFolder / fileName);
-
-	logFile << "[" << std::endl;
-	logFile << "\t{" << std::endl;
-	logFile << "\t\t\"LocalPlayer\": \"" + gameWrapper->GetUniqueID().GetIdString() + "\"," << std::endl;
-
-	if (tradeInfo.LocalData.Names.length() > 3)
+	if (std::filesystem::exists(DataFolder))
 	{
-		std::string formattedNames = tradeInfo.LocalData.Names;
-		formattedNames.erase(formattedNames.length() - 2, 2);
-		logFile << "\t\t\"LocalProducts\": [" << formattedNames << "]," << std::endl;
+		std::string fileName = "TradeDate_" + std::to_string(std::time(nullptr)) + ".json";
+		std::ofstream logFile(DataFolder / fileName);
+
+		logFile << "[" << std::endl;
+		logFile << "\t{" << std::endl;
+		logFile << "\t\t\"LocalPlayer\": \"" + gameWrapper->GetUniqueID().GetIdString() + "\"," << std::endl;
+
+		if (tradeInfo.LocalData.Names.length() > 3)
+		{
+			std::string formattedNames = tradeInfo.LocalData.Names;
+			formattedNames.erase(formattedNames.length() - 2, 2);
+			logFile << "\t\t\"LocalProducts\": [" << formattedNames << "]," << std::endl;
+		}
+		else
+		{
+			logFile << "\t\t\"LocalProducts\": [\"\"]," << std::endl;
+		}
+
+		if (tradeInfo.LocalData.Instances.length() > 3)
+		{
+			std::string formattedProducts = tradeInfo.LocalData.Instances;
+			formattedProducts.erase(formattedProducts.length() - 2, 2);
+			logFile << "\t\t\"LocalInstances\": [" << formattedProducts << "]," << std::endl;
+		}
+		else
+		{
+			logFile << "\t\t\"LocalInstances\": [\"\"]," << std::endl;
+		}
+
+		logFile << "\t\t\"LocalCurrencyId\": " + std::to_string(tradeInfo.LocalData.CurrencyId) + "," << std::endl;
+		logFile << "\t\t\"LocalCurrencyAmount\": " + std::to_string(tradeInfo.LocalData.CurrencyAmount) + "," << std::endl;
+
+		logFile << "\t\t\"RemotePlayer\": \"" + tradeInfo.RemotePlayer.str() + "\"," << std::endl;
+
+		if (tradeInfo.RemoteData.Names.length() > 3)
+		{
+			std::string formattedNames = tradeInfo.RemoteData.Names;
+			formattedNames.erase(formattedNames.length() - 2, 2);
+			logFile << "\t\t\"RemoteProducts\": [" << formattedNames << "]," << std::endl;
+		}
+		else
+		{
+			logFile << "\t\t\"RemoteProducts\": [\"\"]," << std::endl;
+		}
+
+		if (tradeInfo.RemoteData.Instances.length() > 3)
+		{
+			std::string formattedProducts = tradeInfo.RemoteData.Instances;
+			formattedProducts.erase(formattedProducts.length() - 2, 2);
+			logFile << "\t\t\"RemoteInstances\": [" << formattedProducts << "]," << std::endl;
+		}
+		else
+		{
+			logFile << "\t\t\"RemoteInstances\": [\"\"]," << std::endl;
+		}
+
+		logFile << "\t\t\"RemoteCurrencyId\": " + std::to_string(tradeInfo.RemoteData.CurrencyId) + "," << std::endl;
+		logFile << "\t\t\"RemoteCurrencyAmount\": " + std::to_string(tradeInfo.RemoteData.CurrencyAmount) + "," << std::endl;
+
+		logFile << "\t\t\"TradeGuid\": \"" + tradeInfo.Id.GetGuidStr() + "\"," << std::endl;
+		logFile << "\t\t\"TradeGuidFormat\": \"EGuidFormats::" + tradeInfo.Id.GetFormatStr() + "\"," << std::endl;
+		logFile << "\t\t\"TradeStartEpoch\": \"" + std::to_string(tradeInfo.StartEpoch) + "\"," << std::endl;
+		logFile << "\t\t\"TradeEndEpoch\": \"" + std::to_string(tradeInfo.EndEpoch) + "\"" << std::endl;
+
+		logFile << "\t}" << std::endl;
+		logFile << "]" << std::endl;
+
+		logFile.close();
+
+		cvarManager->log("(LogTrade) Logged to file: " + fileName);
 	}
 	else
 	{
-		logFile << "\t\t\"LocalProducts\": [\"\"]," << std::endl;
+		cvarManager->log("(LogTrade) Error: Failed to log trade, data folder does not exist!");
 	}
-
-	if (tradeInfo.LocalData.Instances.length() > 3)
-	{
-		std::string formattedProducts = tradeInfo.LocalData.Instances;
-		formattedProducts.erase(formattedProducts.length() - 2, 2);
-		logFile << "\t\t\"LocalInstances\": [" << formattedProducts << "]," << std::endl;
-	}
-	else
-	{
-		logFile << "\t\t\"LocalInstances\": [\"\"]," << std::endl;
-	}
-
-	logFile << "\t\t\"LocalCurrencyId\": " + std::to_string(tradeInfo.LocalData.CurrencyId) + "," << std::endl;
-	logFile << "\t\t\"LocalCurrencyAmount\": " + std::to_string(tradeInfo.LocalData.CurrencyAmount) + "," << std::endl;
-
-	logFile << "\t\t\"RemotePlayer\": \"" + tradeInfo.RemotePlayer.str() + "\"," << std::endl;
-
-	if (tradeInfo.RemoteData.Names.length() > 3)
-	{
-		std::string formattedNames = tradeInfo.RemoteData.Names;
-		formattedNames.erase(formattedNames.length() - 2, 2);
-		logFile << "\t\t\"RemoteProducts\": [" << formattedNames << "]," << std::endl;
-	}
-	else
-	{
-		logFile << "\t\t\"RemoteProducts\": [\"\"]," << std::endl;
-	}
-
-	if (tradeInfo.RemoteData.Instances.length() > 3)
-	{	
-		std::string formattedProducts = tradeInfo.RemoteData.Instances;
-		formattedProducts.erase(formattedProducts.length() - 2, 2);
-		logFile << "\t\t\"RemoteInstances\": [" << formattedProducts << "]," << std::endl;
-	}
-	else
-	{
-		logFile << "\t\t\"RemoteInstances\": [\"\"]," << std::endl;
-	}
-
-	logFile << "\t\t\"RemoteCurrencyId\": " + std::to_string(tradeInfo.RemoteData.CurrencyId) + "," << std::endl;
-	logFile << "\t\t\"RemoteCurrencyAmount\": " + std::to_string(tradeInfo.RemoteData.CurrencyAmount) + "," << std::endl;
-
-	logFile << "\t\t\"TradeGuid\": \"" + tradeInfo.Id.GetGuidStr() + "\"," << std::endl;
-	logFile << "\t\t\"TradeGuidFormat\": \"EGuidFormats::" + tradeInfo.Id.GetFormatStr() + "\"," << std::endl;
-	logFile << "\t\t\"TradeStartEpoch\": \"" + std::to_string(tradeInfo.StartEpoch) + "\"," << std::endl;
-	logFile << "\t\t\"TradeEndEpoch\": \"" + std::to_string(tradeInfo.EndEpoch) + "\"" << std::endl;
-
-	logFile << "\t}" << std::endl;
-	logFile << "]" << std::endl;
-
-	logFile.close();
-
-	cvarManager->log("(LogTrade) Logged to file: " + fileName);
 }
 
 void TradeLogger::TradeAccept(ActorWrapper caller, void* params, const std::string& functionName)
@@ -271,8 +294,8 @@ void TradeLogger::TradeComplete(ActorWrapper caller, void* params, const std::st
 			{
 				if (localProduct)
 				{
-					ActiveTrade.LocalData.Names += "\"" + localProduct.GetLongLabel().ToString() + "\", ";
-					ActiveTrade.LocalData.Instances += "\"" + std::to_string(localProduct.GetInstanceID()) + "\", ";
+					ActiveTrade.LocalData.Names += ("\"" + localProduct.GetLongLabel().ToString() + "\", ");
+					ActiveTrade.LocalData.Instances += ("\"" + std::to_string(localProduct.GetInstanceID()) + "\", ");
 				}
 			}
 
@@ -280,21 +303,21 @@ void TradeLogger::TradeComplete(ActorWrapper caller, void* params, const std::st
 			{
 				if (remoteProduct)
 				{
-					ActiveTrade.RemoteData.Names += "\"" + remoteProduct.GetLongLabel().ToString() + "\", ";
-					ActiveTrade.RemoteData.Instances += "\"" + std::to_string(remoteProduct.GetInstanceID()) + "\", ";
+					ActiveTrade.RemoteData.Names += ("\"" + remoteProduct.GetLongLabel().ToString() + "\", ");
+					ActiveTrade.RemoteData.Instances += ("\"" + std::to_string(remoteProduct.GetInstanceID()) + "\", ");
 				}
 			}
 
 			std::vector<TradeWrapper::Currency> localCurrency = wrappedTrade.GetSendingCurrency();
 			std::vector<TradeWrapper::Currency> remoteCurrency = wrappedTrade.GetReceivingCurrency();
 
-			if (localCurrency.size() > 0)
+			if (!localCurrency.empty())
 			{
 				ActiveTrade.LocalData.CurrencyId = localCurrency[0].currency_id;
 				ActiveTrade.LocalData.CurrencyAmount = localCurrency[0].quantity;
 			}
 
-			if (remoteCurrency.size() > 0)
+			if (!remoteCurrency.empty())
 			{
 				ActiveTrade.RemoteData.CurrencyId = remoteCurrency[0].currency_id;
 				ActiveTrade.RemoteData.CurrencyAmount = remoteCurrency[0].quantity;
