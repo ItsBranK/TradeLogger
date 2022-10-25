@@ -139,14 +139,13 @@ void TradeLogger::onLoad()
 
 void TradeLogger::onUnload()
 {
-	gameWrapper->UnhookEvent("Function ProjectX.OnlineGameParty_X.HandleAcceptInviteToTrade");
-	gameWrapper->UnhookEvent("Function TAGame.GFxData_Party_TA.HandleCloseInviteToTrade");
+	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.GetRemotePlayerName");
+	gameWrapper->UnhookEvent("Function TAGame.GFxData_PartyMemberProfile_TA.OnRemoved");
 	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradeProductUpdate");
 	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradeCurrencyUpdate");
 	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.SetTransactionQuantity");
 	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradePlayerError");
-	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradePlayerComplete");
-	gameWrapper->UnhookEvent("Function TAGame.OnlineGameParty_TA.SendTradeToBackEnd");
+	gameWrapper->UnhookEvent("Function TAGame.__OnlineGameParty_TA__SendTradeToBackEnd_0x1.__OnlineGameParty_TA__SendTradeToBackEnd_0x1");
 }
 
 void TradeLogger::LogTrade(const TradeInfo& tradeInfo)
