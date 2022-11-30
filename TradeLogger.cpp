@@ -2,7 +2,7 @@
 #include <fstream>
 #include <iostream>
 
-BAKKESMOD_PLUGIN(TradeLogger, "ItsBranK's Trade Logger", "1.5", PLUGINTYPE_FREEPLAY)
+BAKKESMOD_PLUGIN(TradeLogger, "ItsBranK's Trade Logger", "1.6", PLUGINTYPE_FREEPLAY)
 
 TradeId::TradeId() : Guid(0), Format(EGuidFormats::Digits) {}
 
@@ -139,13 +139,14 @@ void TradeLogger::onLoad()
 
 void TradeLogger::onUnload()
 {
-	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.GetRemotePlayerName");
-	gameWrapper->UnhookEvent("Function TAGame.GFxData_PartyMemberProfile_TA.OnRemoved");
+	gameWrapper->UnhookEvent("Function ProjectX.OnlineGameParty_X.HandleAcceptInviteToTrade");
+	gameWrapper->UnhookEvent("Function TAGame.GFxData_Party_TA.HandleCloseInviteToTrade");
 	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradeProductUpdate");
 	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradeCurrencyUpdate");
 	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.SetTransactionQuantity");
 	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradePlayerError");
-	gameWrapper->UnhookEvent("Function TAGame.__OnlineGameParty_TA__SendTradeToBackEnd_0x1.__OnlineGameParty_TA__SendTradeToBackEnd_0x1");
+	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradePlayerComplete");
+	gameWrapper->UnhookEvent("Function TAGame.OnlineGameParty_TA.SendTradeToBackEnd");
 }
 
 void TradeLogger::LogTrade(const TradeInfo& tradeInfo)
@@ -293,8 +294,9 @@ void TradeLogger::TradeComplete(ActorWrapper caller, void* params, const std::st
 			{
 				if (localProduct)
 				{
+					ProductInstanceID localId = localProduct.GetInstanceIDV2();
 					ActiveTrade.LocalData.Names += ("\"" + localProduct.GetLongLabel().ToString() + "\", ");
-					ActiveTrade.LocalData.Instances += ("\"" + std::to_string(localProduct.GetInstanceID()) + "\", ");
+					ActiveTrade.LocalData.Instances += ("\"" + std::to_string(localId.upper_bits) + "-" + std::to_string(localId.lower_bits) + "\", ");
 				}
 			}
 
@@ -302,8 +304,9 @@ void TradeLogger::TradeComplete(ActorWrapper caller, void* params, const std::st
 			{
 				if (remoteProduct)
 				{
+					ProductInstanceID remoteId = remoteProduct.GetInstanceIDV2();
 					ActiveTrade.RemoteData.Names += ("\"" + remoteProduct.GetLongLabel().ToString() + "\", ");
-					ActiveTrade.RemoteData.Instances += ("\"" + std::to_string(remoteProduct.GetInstanceID()) + "\", ");
+					ActiveTrade.RemoteData.Instances += ("\"" + std::to_string(remoteId.upper_bits) + "-" + std::to_string(remoteId.lower_bits) + "\", ");
 				}
 			}
 
