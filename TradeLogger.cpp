@@ -2,7 +2,7 @@
 #include <fstream>
 #include <iostream>
 
-BAKKESMOD_PLUGIN(TradeLogger, "ItsBranK's Trade Logger", "1.6", PLUGINTYPE_FREEPLAY)
+BAKKESMOD_PLUGIN(TradeLogger, "ItsBranK's Trade Logger", "1.7", PLUGINTYPE_FREEPLAY)
 
 TradeId::TradeId() : Guid(0), Format(EGuidFormats::Digits) {}
 
@@ -246,12 +246,6 @@ void TradeLogger::TradeAccept(ActorWrapper caller, void* params, const std::stri
 	if (!IsTrading)
 	{
 		IsTrading = true;
-
-		if (caller.memory_address)
-		{
-			CurrentTrade = caller.memory_address;
-		}
-
 		ActiveTrade.StartEpoch = std::time(nullptr);
 		cvarManager->log("(TradeAccept) Monitoring trade!");
 	}
@@ -260,7 +254,6 @@ void TradeLogger::TradeAccept(ActorWrapper caller, void* params, const std::stri
 void TradeLogger::TradeCancel(ActorWrapper caller, void* params, const std::string& functionName)
 {
 	ActiveTrade.Reset();
-	CurrentTrade = NULL;
 	IsTrading = false;
 }
 
@@ -268,7 +261,6 @@ void TradeLogger::TradeUpdate(ActorWrapper caller, void* params, const std::stri
 {
 	if (caller)
 	{
-		CurrentTrade = caller.memory_address;
 		TradeWrapper tradeWrapper(caller.memory_address);
 
 		if (tradeWrapper)
@@ -281,64 +273,57 @@ void TradeLogger::TradeUpdate(ActorWrapper caller, void* params, const std::stri
 
 void TradeLogger::TradeComplete(ActorWrapper caller, void* params, const std::string& functionName)
 {
-	if (CurrentTrade)
+	TradeWrapper wrappedTrade = gameWrapper->GetItemsWrapper().GetTradeWrapper();
+
+	if (wrappedTrade)
 	{
-		TradeWrapper wrappedTrade(CurrentTrade);
+		ActiveTrade.RemotePlayer = wrappedTrade.GetTradingPlayer();
+		ArrayWrapper<OnlineProductWrapper> localProducts = wrappedTrade.GetSendingProducts();
+		ArrayWrapper<OnlineProductWrapper> remoteProducts = wrappedTrade.GetReceivingProducts();
 
-		if (wrappedTrade)
+		for (OnlineProductWrapper localProduct : localProducts)
 		{
-			ArrayWrapper<OnlineProductWrapper> localProducts = wrappedTrade.GetSendingProducts();
-			ArrayWrapper<OnlineProductWrapper> remoteProducts = wrappedTrade.GetReceivingProducts();
-
-			for (OnlineProductWrapper localProduct : localProducts)
+			if (localProduct)
 			{
-				if (localProduct)
-				{
-					ProductInstanceID localId = localProduct.GetInstanceIDV2();
-					ActiveTrade.LocalData.Names += ("\"" + localProduct.GetLongLabel().ToString() + "\", ");
-					ActiveTrade.LocalData.Instances += ("\"" + std::to_string(localId.upper_bits) + "-" + std::to_string(localId.lower_bits) + "\", ");
-				}
+				ProductInstanceID localId = localProduct.GetInstanceIDV2();
+				ActiveTrade.LocalData.Names += ("\"" + localProduct.GetLongLabel().ToString() + "\", ");
+				ActiveTrade.LocalData.Instances += ("\"" + std::to_string(localId.upper_bits) + "-" + std::to_string(localId.lower_bits) + "\", ");
 			}
-
-			for (OnlineProductWrapper remoteProduct : remoteProducts)
-			{
-				if (remoteProduct)
-				{
-					ProductInstanceID remoteId = remoteProduct.GetInstanceIDV2();
-					ActiveTrade.RemoteData.Names += ("\"" + remoteProduct.GetLongLabel().ToString() + "\", ");
-					ActiveTrade.RemoteData.Instances += ("\"" + std::to_string(remoteId.upper_bits) + "-" + std::to_string(remoteId.lower_bits) + "\", ");
-				}
-			}
-
-			std::vector<TradeWrapper::Currency> localCurrency = wrappedTrade.GetSendingCurrency();
-			std::vector<TradeWrapper::Currency> remoteCurrency = wrappedTrade.GetReceivingCurrency();
-
-			if (!localCurrency.empty())
-			{
-				ActiveTrade.LocalData.CurrencyId = localCurrency[0].currency_id;
-				ActiveTrade.LocalData.CurrencyAmount = localCurrency[0].quantity;
-			}
-
-			if (!remoteCurrency.empty())
-			{
-				ActiveTrade.RemoteData.CurrencyId = remoteCurrency[0].currency_id;
-				ActiveTrade.RemoteData.CurrencyAmount = remoteCurrency[0].quantity;
-			}
-
-			ActiveTrade.EndEpoch = std::time(nullptr);
-			ActiveTrade.Id.SetFormat(EGuidFormats::UniqueObjectGuid);
-			LogTrade(ActiveTrade);
-			ActiveTrade.Reset();
-			CurrentTrade = NULL;
-			IsTrading = false;
 		}
-		else
+
+		for (OnlineProductWrapper remoteProduct : remoteProducts)
 		{
-			cvarManager->log("(TradeVerify) Error: Invalid wrapper! Please contact ItsBranK with any information about your trade!");
+			if (remoteProduct)
+			{
+				ProductInstanceID remoteId = remoteProduct.GetInstanceIDV2();
+				ActiveTrade.RemoteData.Names += ("\"" + remoteProduct.GetLongLabel().ToString() + "\", ");
+				ActiveTrade.RemoteData.Instances += ("\"" + std::to_string(remoteId.upper_bits) + "-" + std::to_string(remoteId.lower_bits) + "\", ");
+			}
 		}
+
+		std::vector<TradeWrapper::Currency> localCurrency = wrappedTrade.GetSendingCurrency();
+		std::vector<TradeWrapper::Currency> remoteCurrency = wrappedTrade.GetReceivingCurrency();
+
+		if (!localCurrency.empty())
+		{
+			ActiveTrade.LocalData.CurrencyId = localCurrency[0].currency_id;
+			ActiveTrade.LocalData.CurrencyAmount = localCurrency[0].quantity;
+		}
+
+		if (!remoteCurrency.empty())
+		{
+			ActiveTrade.RemoteData.CurrencyId = remoteCurrency[0].currency_id;
+			ActiveTrade.RemoteData.CurrencyAmount = remoteCurrency[0].quantity;
+		}
+
+		ActiveTrade.EndEpoch = std::time(nullptr);
+		ActiveTrade.Id.SetFormat(EGuidFormats::UniqueObjectGuid);
+		LogTrade(ActiveTrade);
+		ActiveTrade.Reset();
+		IsTrading = false;
 	}
 	else
 	{
-		cvarManager->log("(TradeVerify) Error: Invalid pointer! Please contact ItsBranK with any information about your trade!");
+		cvarManager->log("(TradeVerify) Error: Invalid wrapper! Please contact ItsBranK with any information about your trade!");
 	}
 }

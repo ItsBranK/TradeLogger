@@ -72,7 +72,6 @@ class TradeLogger : public BakkesMod::Plugin::BakkesModPlugin
 private:
 	std::filesystem::path DataFolder;
 	TradeInfo ActiveTrade;
-	uintptr_t CurrentTrade = 0;
 	bool IsTrading = false;
 
 public:
