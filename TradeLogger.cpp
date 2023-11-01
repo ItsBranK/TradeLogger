@@ -2,32 +2,32 @@
 #include <fstream>
 #include <iostream>
 
-BAKKESMOD_PLUGIN(TradeLogger, "ItsBranK's Trade Logger", "1.7", PLUGINTYPE_FREEPLAY)
+BAKKESMOD_PLUGIN(TradeLogger, "ItsBranK's Trade Logger", "1.9", PLUGINTYPE_FREEPLAY)
 
-TradeId::TradeId() : Guid(0), Format(EGuidFormats::Digits) {}
+TradeId::TradeId() : _guid(0), _format(EGuidFormats::Digits) {}
 
-TradeId::TradeId(const TradeId& tradeId) : Guid(tradeId.Guid), Format(tradeId.Format) {}
+TradeId::TradeId(const TradeId& tradeId) : _guid(tradeId._guid), _format(tradeId._format) {}
 
 TradeId::~TradeId() {}
 
 GuidWrapper TradeId::GetGuid() const
 {
-	return Guid;
+	return _guid;
 }
 
 std::string TradeId::GetGuidStr() const
 {
-	return Guid.ToString(Format);
+	return _guid.ToString(_format);
 }
 
 EGuidFormats TradeId::GetFormat() const
 {
-	return Format;
+	return _format;
 }
 
 std::string TradeId::GetFormatStr() const
 {
-	switch (Format)
+	switch (_format)
 	{
 	case EGuidFormats::Digits:
 		return "Digits";
@@ -41,30 +41,30 @@ std::string TradeId::GetFormatStr() const
 		return "HexValuesInBraces";
 	case EGuidFormats::UniqueObjectGuid:
 		return "UniqueObjectGuid";
+	default:
+		return "Unknown";
 	}
-
-	return "Unknown";
 }
 
 void TradeId::SetGuid(const GuidWrapper& tradeGuid)
 {
-	Guid = tradeGuid;
+	_guid = tradeGuid;
 }
 
 void TradeId::SetFormat(EGuidFormats newFormat)
 {
-	Format = newFormat;
+	_format = newFormat;
 }
 
 bool TradeId::IsValid() const
 {
-	return Guid.IsValid();
+	return _guid.IsValid();
 }
 
 TradeId& TradeId::operator=(const TradeId& other)
 {
-	Guid = other.Guid;
-	Format = other.Format;
+	_guid = other._guid;
+	_format = other._format;
 	return *this;
 }
 
@@ -127,26 +127,42 @@ TradeInfo& TradeInfo::operator=(const TradeInfo& other)
 
 void TradeLogger::onLoad()
 {
-	DataFolder = (gameWrapper->GetBakkesModPath() / "data" / "TradeLogger");
-	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.GetRemotePlayerName", std::bind(&TradeLogger::TradeAccept, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_PartyMemberProfile_TA.OnRemoved", std::bind(&TradeLogger::TradeCancel, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.HandleTradeProductUpdate", std::bind(&TradeLogger::TradeUpdate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.HandleTradeCurrencyUpdate", std::bind(&TradeLogger::TradeUpdate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.SetTransactionQuantity", std::bind(&TradeLogger::TradeUpdate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.HandleTradePlayerError", std::bind(&TradeLogger::TradeCancel, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.__OnlineGameParty_TA__SendTradeToBackEnd_0x1.__OnlineGameParty_TA__SendTradeToBackEnd_0x1", std::bind(&TradeLogger::TradeComplete, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	if (CanTrade())
+	{
+		_dataFolder = (gameWrapper->GetBakkesModPath() / "data" / "TradeLogger");
+		gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.GetRemotePlayerName", std::bind(&TradeLogger::TradeAccept, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+		gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_PartyMemberProfile_TA.OnRemoved", std::bind(&TradeLogger::TradeCancel, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+		gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.HandleTradeProductUpdate", std::bind(&TradeLogger::TradeUpdate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+		gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.HandleTradeCurrencyUpdate", std::bind(&TradeLogger::TradeUpdate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+		gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.SetTransactionQuantity", std::bind(&TradeLogger::TradeUpdate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+		gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.GFxData_TradeLobby_TA.HandleTradePlayerError", std::bind(&TradeLogger::TradeCancel, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+		gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.__OnlineGameParty_TA__SendTradeToBackEnd_0x1.__OnlineGameParty_TA__SendTradeToBackEnd_0x1", std::bind(&TradeLogger::TradeComplete, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	}
+	else
+	{
+		cvarManager->log("(onLoad) Error: This plugin is no longer functional due to Epic Games removing player to player trading!");
+	}
 }
 
 void TradeLogger::onUnload()
 {
-	gameWrapper->UnhookEvent("Function ProjectX.OnlineGameParty_X.HandleAcceptInviteToTrade");
-	gameWrapper->UnhookEvent("Function TAGame.GFxData_Party_TA.HandleCloseInviteToTrade");
-	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradeProductUpdate");
-	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradeCurrencyUpdate");
-	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.SetTransactionQuantity");
-	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradePlayerError");
-	gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradePlayerComplete");
-	gameWrapper->UnhookEvent("Function TAGame.OnlineGameParty_TA.SendTradeToBackEnd");
+	if (CanTrade())
+	{
+		gameWrapper->UnhookEvent("Function ProjectX.OnlineGameParty_X.HandleAcceptInviteToTrade");
+		gameWrapper->UnhookEvent("Function TAGame.GFxData_Party_TA.HandleCloseInviteToTrade");
+		gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradeProductUpdate");
+		gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradeCurrencyUpdate");
+		gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.SetTransactionQuantity");
+		gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradePlayerError");
+		gameWrapper->UnhookEvent("Function TAGame.GFxData_TradeLobby_TA.HandleTradePlayerComplete");
+		gameWrapper->UnhookEvent("Function TAGame.OnlineGameParty_TA.SendTradeToBackEnd");
+	}
+}
+
+bool TradeLogger::CanTrade() const
+{
+	uint64_t currentTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock().now().time_since_epoch()).count();
+	return (currentTime < _killStamp);
 }
 
 void TradeLogger::LogTrade(const TradeInfo& tradeInfo)
@@ -157,15 +173,15 @@ void TradeLogger::LogTrade(const TradeInfo& tradeInfo)
 		return;
 	}
 
-	if (!std::filesystem::exists(DataFolder))
+	if (!std::filesystem::exists(_dataFolder))
 	{
-		std::filesystem::create_directory(DataFolder);
+		std::filesystem::create_directory(_dataFolder);
 	}
 
-	if (std::filesystem::exists(DataFolder))
+	if (std::filesystem::exists(_dataFolder))
 	{
 		std::string fileName = "TradeDate_" + std::to_string(std::time(nullptr)) + ".json";
-		std::ofstream logFile(DataFolder / fileName);
+		std::ofstream logFile(_dataFolder / fileName);
 
 		logFile << "[" << std::endl;
 		logFile << "\t{" << std::endl;
@@ -243,18 +259,18 @@ void TradeLogger::LogTrade(const TradeInfo& tradeInfo)
 
 void TradeLogger::TradeAccept(ActorWrapper caller, void* params, const std::string& functionName)
 {
-	if (!IsTrading)
+	if (!_isTrading)
 	{
-		IsTrading = true;
-		ActiveTrade.StartEpoch = std::time(nullptr);
-		cvarManager->log("(TradeAccept) Monitoring trade!");
+		_isTrading = true;
+		_activeTrade.StartEpoch = std::time(nullptr);
+		cvarManager->log("(TradeAccept) Monitoring trade with player \"" + TradeWrapper(caller.memory_address).GetTradingPlayer().GetIdString() + "\"!");
 	}
 }
 
 void TradeLogger::TradeCancel(ActorWrapper caller, void* params, const std::string& functionName)
 {
-	ActiveTrade.Reset();
-	IsTrading = false;
+	_activeTrade.Reset();
+	_isTrading = false;
 }
 
 void TradeLogger::TradeUpdate(ActorWrapper caller, void* params, const std::string& functionName)
@@ -266,7 +282,7 @@ void TradeLogger::TradeUpdate(ActorWrapper caller, void* params, const std::stri
 		if (tradeWrapper)
 		{
 			GUIDWrapper brokenWrapper = tradeWrapper.GetTradeGuid();
-			ActiveTrade.Id.SetGuid(GuidWrapper(brokenWrapper.A, brokenWrapper.B, brokenWrapper.C, brokenWrapper.D));
+			_activeTrade.Id.SetGuid(GuidWrapper(brokenWrapper.A, brokenWrapper.B, brokenWrapper.C, brokenWrapper.D));
 		}
 	}
 }
@@ -277,7 +293,7 @@ void TradeLogger::TradeComplete(ActorWrapper caller, void* params, const std::st
 
 	if (wrappedTrade)
 	{
-		ActiveTrade.RemotePlayer = wrappedTrade.GetTradingPlayer();
+		_activeTrade.RemotePlayer = wrappedTrade.GetTradingPlayer();
 		ArrayWrapper<OnlineProductWrapper> localProducts = wrappedTrade.GetSendingProducts();
 		ArrayWrapper<OnlineProductWrapper> remoteProducts = wrappedTrade.GetReceivingProducts();
 
@@ -286,8 +302,8 @@ void TradeLogger::TradeComplete(ActorWrapper caller, void* params, const std::st
 			if (localProduct)
 			{
 				ProductInstanceID localId = localProduct.GetInstanceIDV2();
-				ActiveTrade.LocalData.Names += ("\"" + localProduct.GetLongLabel().ToString() + "\", ");
-				ActiveTrade.LocalData.Instances += ("\"" + std::to_string(localId.upper_bits) + "-" + std::to_string(localId.lower_bits) + "\", ");
+				_activeTrade.LocalData.Names += ("\"" + localProduct.GetLongLabel().ToString() + "\", ");
+				_activeTrade.LocalData.Instances += ("\"" + std::to_string(localId.upper_bits) + "-" + std::to_string(localId.lower_bits) + "\", ");
 			}
 		}
 
@@ -296,8 +312,8 @@ void TradeLogger::TradeComplete(ActorWrapper caller, void* params, const std::st
 			if (remoteProduct)
 			{
 				ProductInstanceID remoteId = remoteProduct.GetInstanceIDV2();
-				ActiveTrade.RemoteData.Names += ("\"" + remoteProduct.GetLongLabel().ToString() + "\", ");
-				ActiveTrade.RemoteData.Instances += ("\"" + std::to_string(remoteId.upper_bits) + "-" + std::to_string(remoteId.lower_bits) + "\", ");
+				_activeTrade.RemoteData.Names += ("\"" + remoteProduct.GetLongLabel().ToString() + "\", ");
+				_activeTrade.RemoteData.Instances += ("\"" + std::to_string(remoteId.upper_bits) + "-" + std::to_string(remoteId.lower_bits) + "\", ");
 			}
 		}
 
@@ -306,21 +322,20 @@ void TradeLogger::TradeComplete(ActorWrapper caller, void* params, const std::st
 
 		if (!localCurrency.empty())
 		{
-			ActiveTrade.LocalData.CurrencyId = localCurrency[0].currency_id;
-			ActiveTrade.LocalData.CurrencyAmount = localCurrency[0].quantity;
+			_activeTrade.LocalData.CurrencyId = localCurrency[0].currency_id;
+			_activeTrade.LocalData.CurrencyAmount = localCurrency[0].quantity;
 		}
 
 		if (!remoteCurrency.empty())
 		{
-			ActiveTrade.RemoteData.CurrencyId = remoteCurrency[0].currency_id;
-			ActiveTrade.RemoteData.CurrencyAmount = remoteCurrency[0].quantity;
+			_activeTrade.RemoteData.CurrencyId = remoteCurrency[0].currency_id;
+			_activeTrade.RemoteData.CurrencyAmount = remoteCurrency[0].quantity;
 		}
 
-		ActiveTrade.EndEpoch = std::time(nullptr);
-		ActiveTrade.Id.SetFormat(EGuidFormats::UniqueObjectGuid);
-		LogTrade(ActiveTrade);
-		ActiveTrade.Reset();
-		IsTrading = false;
+		_activeTrade.EndEpoch = std::time(nullptr);
+		_activeTrade.Id.SetFormat(EGuidFormats::UniqueObjectGuid);
+		LogTrade(_activeTrade);
+		TradeCancel(ActorWrapper(0), nullptr, "");
 	}
 	else
 	{

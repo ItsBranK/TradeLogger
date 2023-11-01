@@ -6,8 +6,8 @@
 class TradeId
 {
 private:
-	GuidWrapper Guid;
-	EGuidFormats Format;
+	GuidWrapper _guid;
+	EGuidFormats _format;
 
 public:
 	TradeId();
@@ -70,13 +70,15 @@ public:
 class TradeLogger : public BakkesMod::Plugin::BakkesModPlugin
 {
 private:
-	std::filesystem::path DataFolder;
-	TradeInfo ActiveTrade;
-	bool IsTrading = false;
+	std::filesystem::path _dataFolder;
+	TradeInfo _activeTrade;
+	bool _isTrading = false;
+	uint64_t _killStamp = 1701860766; // Wed Dec 06 2023 11:06:06 GMT+0000
 
 public:
 	virtual void onLoad();
 	virtual void onUnload();
+	bool CanTrade() const;
 	void LogTrade(const TradeInfo& tradeInfo);
 	void TradeAccept(ActorWrapper caller, void* params, const std::string& functionName);
 	void TradeCancel(ActorWrapper caller, void* params, const std::string& functionName);
