@@ -159,10 +159,14 @@ void TradeLogger::onUnload()
 	}
 }
 
+uint64_t TradeLogger::CurrentTime() const
+{
+	return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock().now().time_since_epoch()).count();
+}
+
 bool TradeLogger::CanTrade() const
 {
-	uint64_t currentTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock().now().time_since_epoch()).count();
-	return (currentTime < _killStamp);
+	return (CurrentTime() < _killStamp);
 }
 
 void TradeLogger::LogTrade(const TradeInfo& tradeInfo)
@@ -180,7 +184,7 @@ void TradeLogger::LogTrade(const TradeInfo& tradeInfo)
 
 	if (std::filesystem::exists(_dataFolder))
 	{
-		std::string fileName = "TradeDate_" + std::to_string(std::time(nullptr)) + ".json";
+		std::string fileName = "TradeDate_" + std::to_string(CurrentTime()) + ".json";
 		std::ofstream logFile(_dataFolder / fileName);
 
 		logFile << "[" << std::endl;
@@ -262,7 +266,7 @@ void TradeLogger::TradeAccept(ActorWrapper caller, void* params, const std::stri
 	if (!_isTrading)
 	{
 		_isTrading = true;
-		_activeTrade.StartEpoch = std::time(nullptr);
+		_activeTrade.StartEpoch = CurrentTime();
 		cvarManager->log("(TradeAccept) Monitoring trade with player \"" + TradeWrapper(caller.memory_address).GetTradingPlayer().GetIdString() + "\"!");
 	}
 }
@@ -332,7 +336,7 @@ void TradeLogger::TradeComplete(ActorWrapper caller, void* params, const std::st
 			_activeTrade.RemoteData.CurrencyAmount = remoteCurrency[0].quantity;
 		}
 
-		_activeTrade.EndEpoch = std::time(nullptr);
+		_activeTrade.EndEpoch = CurrentTime();
 		_activeTrade.Id.SetFormat(EGuidFormats::UniqueObjectGuid);
 		LogTrade(_activeTrade);
 		TradeCancel(ActorWrapper(0), nullptr, "");

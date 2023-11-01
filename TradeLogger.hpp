@@ -78,6 +78,7 @@ private:
 public:
 	virtual void onLoad();
 	virtual void onUnload();
+	uint64_t CurrentTime() const;
 	bool CanTrade() const;
 	void LogTrade(const TradeInfo& tradeInfo);
 	void TradeAccept(ActorWrapper caller, void* params, const std::string& functionName);
